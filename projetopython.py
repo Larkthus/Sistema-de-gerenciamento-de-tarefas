@@ -13,14 +13,17 @@ from tkinter.messagebox import *
 from tkinter import filedialog
 from tkinter.ttk import Combobox, Notebook, Treeview
 
-# =======================
+# =======================================
 # CONFIGURAÇÕES
-# =======================
+# =======================================
 # O banco fica na mesma pasta deste arquivo .py, não importa de onde o
 # programa seja executado. Se você já criou o gerenciador.db com o script
 # SQL, coloque-o nesta pasta.
 PASTA = os.path.dirname(os.path.abspath(__file__))
 CAMINHO_DB = os.path.join(PASTA, "gerenciador.db")
+
+# Imagem do banner (precisa estar na mesma pasta deste arquivo .py)
+CAMINHO_BANNER = os.path.join(PASTA, "banner.png")
 
 # Valores fixos (os mesmos do CHECK da tabela tarefa no script SQL)
 PRIORIDADES = ("Baixa", "Média", "Alta")
@@ -57,9 +60,9 @@ DISCIPLINAS_PADRAO = (
 ORDEM_PRIORIDADE = "CASE t.prioridade WHEN 'Alta' THEN 1 WHEN 'Média' THEN 2 ELSE 3 END"
 
 
-# =======================
+# =======================================
 # BANCO DE DADOS
-# =======================
+# =======================================
 def conectar():
     conexao = sqlite3.connect(CAMINHO_DB)
     # O SQLite deixa as chaves estrangeiras desligadas por padrão
@@ -81,12 +84,12 @@ def criarBanco():
         conexao.executescript("""
             CREATE TABLE IF NOT EXISTS disciplina (
                 id_disciplina INTEGER      PRIMARY KEY AUTOINCREMENT,
-                descricao     VARCHAR(100) NOT NULL UNIQUE
+                descricao     VARCHAR(100) NOT NULL 
             );
 
             CREATE TABLE IF NOT EXISTS aluno (
                 id_aluno  INTEGER      PRIMARY KEY AUTOINCREMENT,
-                usuario   VARCHAR(50)  NOT NULL UNIQUE,
+                usuario   VARCHAR(50)  NOT NULL,
                 senha     VARCHAR(255) NOT NULL,
                 matricula INT          NOT NULL UNIQUE
             );
@@ -132,7 +135,7 @@ def criarBanco():
 
         # Cadastra as disciplinas que ainda não existem. A comparação ignora
         # maiúsculas e acentos, porque o UNIQUE do SQLite diferencia
-        # "Modelagem de Dados II" de "Modelagem de dados II" e criaria duplicata.
+
         existentes = {_chave(linha[0])
                       for linha in conexao.execute("SELECT descricao FROM disciplina")}
         for nome in DISCIPLINAS_PADRAO:
@@ -181,9 +184,9 @@ def carregarDisciplinas():
     return {descricao: id_disciplina for id_disciplina, descricao in linhas}
 
 
-# =======================
+# =======================================
 # CLASSE ALUNO
-# =======================
+# =======================================
 class Aluno:
     def __init__(self, usuario, senha, matricula):
         self.usuario = usuario
@@ -191,9 +194,9 @@ class Aluno:
         self.matricula = matricula
 
 
-# =======================
+# =======================================
 # CLASSE TAREFA
-# =======================
+# =======================================
 class Tarefa:
     def __init__(self, titulo, descricao, prazo, prioridade, status):
         self.titulo = titulo
@@ -203,9 +206,9 @@ class Tarefa:
         self.status = status
 
 
-# =========================
+# =======================================
 # CLASSE DA INTERFACE
-# =========================
+# =======================================
 class Login(Frame):
     def __init__(self):
         Frame.__init__(self)
@@ -213,10 +216,10 @@ class Login(Frame):
         # Aluno que entrou no sistema (None enquanto ninguém fez login)
         self.idAluno = None
         self.usuarioLogado = None
-
-        # *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
-        # JANELA DE LOGIN
-
+        
+# *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
+# JANELA DE LOGIN
+    
         self.master.title("LOGIN")
         self.master.geometry("650x350")
 
@@ -231,14 +234,27 @@ class Login(Frame):
         self.rowconfigure(1, weight=4, uniform="area")
         self.rowconfigure(2, weight=1, uniform="area")
 
+        # IMAGEM DO BANNER (PNG lido direto pelo Tkinter, sem Pillow)
+        # O ideal é o banner.png ter 650 x 58 pixels.
+        # Se der erro, o motivo aparece no terminal e o texto "BANNER" continua.
+        self.fotoBanner = None
+        try:
+            self.fotoBanner = PhotoImage(file=CAMINHO_BANNER, master=self.master)
+        except Exception as erro:
+            print("Não foi possível carregar o banner:", CAMINHO_BANNER)
+            print("Motivo:", repr(erro))
+
         # BANNER DE CIMA
-        self.bannerTopo = Label(self, text="BANNER", bg="gray", fg="white")
+        self.bannerTopo = Label(self, text="BANNER", bg="gray", fg="white",
+                                image=self.fotoBanner, borderwidth=0)
         self.bannerTopo.grid(row=0, column=0, sticky="nsew")
 
         # BANNER DE BAIXO
-        self.bannerBase = Label(self, text="BANNER", bg="gray", fg="white")
+        self.bannerBase = Label(self, text="BANNER", bg="gray", fg="white",
+                                image=self.fotoBanner, borderwidth=0)
         self.bannerBase.grid(row=2, column=0, sticky="nsew")
 
+        
         # ÁREA DO CONTEÚDO: colado no topo, com 15 px de distância do banner
         self.conteudo = Frame(self)
         self.conteudo.grid(row=1, column=0, sticky="n", pady=(15, 0))
@@ -246,20 +262,22 @@ class Login(Frame):
         fonte1 = Font(
             family="Times New Roman",
             size=16,
-            slant="italic"
+            slant="italic",
+            weight = "bold"
         )
 
         # TÍTULO (ocupa as duas colunas para ficar centralizado)
         self.lblTexto1 = Label(self.conteudo)
         self.lblTexto1["font"] = fonte1
         self.lblTexto1["text"] = "Tela de login do usuário"
-        self.lblTexto1["fg"] = "blue"
-        self.lblTexto1["bg"] = "lightgray"
+        self.lblTexto1["fg"] = "blue2"
         self.lblTexto1.grid(row=0, column=0, columnspan=2, padx=5, pady=5)
 
-        # =====================
-        # USUÁRIO
-        # =====================
+        
+
+# =======================================
+# USUÁRIO
+# =======================================
         self.lblUsuario = Label(self.conteudo)
         self.lblUsuario["text"] = "Usuário:"
         self.lblUsuario.grid(row=1, column=0, padx=5, pady=5, sticky="e")
@@ -267,9 +285,9 @@ class Login(Frame):
         self.usuario = Entry(self.conteudo)
         self.usuario.grid(row=1, column=1, padx=5, pady=5)
 
-        # =====================
-        # SENHA
-        # =====================
+# =======================================
+# SENHA
+# =======================================
         self.lblSenha = Label(self.conteudo)
         self.lblSenha["text"] = "Senha:"
         self.lblSenha.grid(row=2, column=0, padx=5, pady=5, sticky="e")
@@ -277,9 +295,9 @@ class Login(Frame):
         self.senha = Entry(self.conteudo, show="*")
         self.senha.grid(row=2, column=1, padx=5, pady=5)
 
-        # =====================
-        # MATRÍCULA
-        # =====================
+# =======================================
+# MATRÍCULA
+# =======================================
         self.lblMatricula = Label(self.conteudo)
         self.lblMatricula["text"] = "Matrícula:"
         self.lblMatricula.grid(row=3, column=0, padx=5, pady=5, sticky="e")
@@ -287,28 +305,28 @@ class Login(Frame):
         self.matricula = Entry(self.conteudo)
         self.matricula.grid(row=3, column=1, padx=5, pady=5)
 
-        # =====================
-        # BOTÃO ENTRAR
-        # =====================
+# =======================================
+# BOTÃO ENTRAR
+# =======================================
         self.btnEntrar = Button(self.conteudo, width=12)
         self.btnEntrar["text"] = "Entrar"
         self.btnEntrar["command"] = self.entrar
         self.btnEntrar.grid(row=4, column=0, padx=5, pady=10, sticky="e")
 
-        # =====================
-        # BOTÃO CADASTRAR (abre a janela de cadastro)
-        # =====================
+# =======================================
+# BOTÃO CADASTRAR (abre a janela de cadastro)
+# =======================================
         self.btnCadastrar = Button(self.conteudo, width=12)
         self.btnCadastrar["text"] = "Cadastrar"
         self.btnCadastrar["command"] = self.abrirCadastro
         self.btnCadastrar.grid(row=4, column=1, padx=5, pady=10, sticky="w")
 
-        # Enter também faz o login
-        self.master.bind("<Return>", lambda evento: self.entrar())
+        
+        self.master.bind("<Return>", lambda evento: self.entrar()) #Login no ENTER
         self.usuario.focus_set()
 
-    # *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
-    # FUNÇÕES AUXILIARES
+# *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
+# FUNÇÕES AUXILIARES
 
     def _jaAberta(self, nome):
         """Se a janela já está aberta, traz ela para a frente e devolve True."""
@@ -319,8 +337,8 @@ class Login(Frame):
             return True
         return False
 
-    # *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
-    # ENTRAR (LOGIN)
+# *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
+# FUNÇÕES DO CADASTRO
 
     def entrar(self):
         usuario = self.usuario.get().strip()
@@ -343,15 +361,14 @@ class Login(Frame):
             finally:
                 conexao.close()
 
-            # Mensagem única, para não revelar qual dos três dados está errado
-            if linha is None or not verificarSenha(senha, linha[1]):
+            if linha is None or not verificarSenha(senha, linha[1]): # Mensagem única, para não revelar qual dos três dados está errado
                 raise ValueError("Usuário, senha ou matrícula incorretos.")
 
             self.idAluno = linha[0]
             self.usuarioLogado = usuario
 
             # Limpa os campos e passa para o menu
-            self.usuario.delete(0, END)
+            self.usuario.delete(0, END) 
             self.senha.delete(0, END)
             self.matricula.delete(0, END)
 
@@ -366,7 +383,7 @@ class Login(Frame):
     def sair(self):
         # Fecha todas as janelas abertas depois do login
         for nome in ("janelaTarefa", "janelaListar", "janelaEditar",
-                     "janelaConcluir", "janelaResumo", "janelaMenu"):
+                     "janelaConcluir", "janelaResumo", "janelaRelatorio", "janelaMenu"):
             janela = getattr(self, nome, None)
             if janela is not None and janela.winfo_exists():
                 janela.destroy()
@@ -378,8 +395,8 @@ class Login(Frame):
         self.master.deiconify()
         self.usuario.focus_set()
 
-    # *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
-    # JANELA DE CADASTRO
+# *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
+# JANELA DE CADASTRO
 
     def abrirCadastro(self):
         if self._jaAberta("janelaCadastro"):
@@ -398,23 +415,31 @@ class Login(Frame):
         fonte = Font(family="Times New Roman", size=16, slant="italic")
         Label(caixa, text="Cadastro de usuário", font=fonte, fg="blue",
               bg="lightgray").grid(row=0, column=0, columnspan=2, padx=5, pady=(0, 10))
-
-        # USUÁRIO
+        
+# =======================================
+# USUÁRIO
+# =======================================
         Label(caixa, text="Usuário:").grid(row=1, column=0, padx=5, pady=5, sticky="e")
         self.cadUsuario = Entry(caixa)
         self.cadUsuario.grid(row=1, column=1, padx=5, pady=5)
-
-        # SENHA
+        
+# =======================================
+# SENHA
+# =======================================
         Label(caixa, text="Senha:").grid(row=2, column=0, padx=5, pady=5, sticky="e")
         self.cadSenha = Entry(caixa, show="*")
         self.cadSenha.grid(row=2, column=1, padx=5, pady=5)
-
-        # MATRÍCULA
+        
+# =======================================
+# MATRÍCULA
+# =======================================
         Label(caixa, text="Matrícula:").grid(row=3, column=0, padx=5, pady=5, sticky="e")
         self.cadMatricula = Entry(caixa)
         self.cadMatricula.grid(row=3, column=1, padx=5, pady=5)
-
-        # BOTÃO CADASTRAR
+        
+# =======================================
+# BOTÃO CADASTRAR
+# =======================================
         Button(caixa, text="Cadastrar", width=20, command=self.cadastrar).grid(
             row=4, column=0, columnspan=2, pady=15)
 
@@ -474,8 +499,8 @@ class Login(Frame):
         except sqlite3.Error as erro:
             showerror("Erro no banco de dados", str(erro), parent=self.janelaCadastro)
 
-    # *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
-    # JANELA DO MENU
+# *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
+# JANELA DO MENU
 
     def menu(self):
         if self._jaAberta("janelaMenu"):
@@ -485,8 +510,8 @@ class Login(Frame):
         self.janelaMenu.title("MENU")
         self.janelaMenu.geometry("500x480")
 
-        # Fechar o menu pelo X também faz logout
-        self.janelaMenu.protocol("WM_DELETE_WINDOW", self.sair)
+        
+        self.janelaMenu.protocol("WM_DELETE_WINDOW", self.sair)# Fechar o menu pelo X também faz logout
 
         self.janelaMenu.columnconfigure(0, weight=1)
         self.janelaMenu.rowconfigure(0, weight=1)
@@ -497,57 +522,65 @@ class Login(Frame):
 
         Label(caixa, text=f"Olá, {self.usuarioLogado}!",
               font=("Verdana", 12)).grid(row=0, column=0, pady=(0, 10))
-
-        # =====================
-        # BOTÃO ADICIONAR TAREFA
-        # =====================
+        
+# =======================================
+# BOTÃO ADICIONAR TAREFA
+# =======================================
         self.btnAdicionar = Button(caixa, width=20)
         self.btnAdicionar["text"] = "Adicionar tarefa(s)"
         self.btnAdicionar["command"] = self.AdicionarTarefa
         self.btnAdicionar.grid(row=1, column=0, pady=10)
 
-        # =====================
-        # BOTÃO LISTAR TAREFA
-        # =====================
+# =======================================
+# BOTÃO LISTAR TAREFA
+# =======================================
         self.btnListar = Button(caixa, width=20)
         self.btnListar["text"] = "Listar tarefa(s)"
         self.btnListar["command"] = self.ListarTarefa
         self.btnListar.grid(row=2, column=0, pady=10)
 
-        # =====================
-        # BOTÃO EDITAR TAREFA
-        # =====================
+    # =======================================
+    # BOTÃO EDITAR TAREFA
+    # =======================================
         self.btnEditar = Button(caixa, width=20)
         self.btnEditar["text"] = "Editar tarefa(s)"
         self.btnEditar["command"] = self.EditarTarefa
         self.btnEditar.grid(row=3, column=0, pady=10)
 
-        # =====================
-        # BOTÃO MARCAR COMO CONCLUÍDA
-        # =====================
+# =======================================
+# BOTÃO MARCAR COMO CONCLUÍDA
+# =======================================
         self.btnMarcar = Button(caixa, width=20)
         self.btnMarcar["text"] = "Marcar como concluída"
         self.btnMarcar["command"] = self.MarcarConcluida
         self.btnMarcar.grid(row=4, column=0, pady=10)
 
-        # =====================
-        # BOTÃO RESUMO
-        # =====================
+# =======================================
+# BOTÃO RESUMO
+# =======================================
         self.btnResumo = Button(caixa, width=20)
         self.btnResumo["text"] = "Resumo / Flash Cards"
         self.btnResumo["command"] = self.Resumo
         self.btnResumo.grid(row=5, column=0, pady=10)
 
-        # =====================
-        # BOTÃO SAIR
-        # =====================
+# =======================================
+# BOTÃO GERAR RELATÓRIO
+# =======================================
+        self.btnRelatorio = Button(caixa, width=20)
+        self.btnRelatorio["text"] = "Gerar relatório"
+        self.btnRelatorio["command"] = self.gerarRelatorio
+        self.btnRelatorio.grid(row=6, column=0, pady=10)
+
+# =======================================
+# BOTÃO SAIR
+# =======================================
         self.btnSair = Button(caixa, width=20)
         self.btnSair["text"] = "Sair"
         self.btnSair["command"] = self.sair
-        self.btnSair.grid(row=6, column=0, pady=(20, 10))
+        self.btnSair.grid(row=7, column=0, pady=(20, 10))
 
-    # *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
-    # JANELA ADD TAREFA
+# *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
+# JANELA ADD TAREFA
 
     def AdicionarTarefa(self):
         if self._jaAberta("janelaTarefa"):
@@ -564,28 +597,38 @@ class Login(Frame):
         caixa = Frame(self.janelaTarefa)
         caixa.grid(row=0, column=0)
 
-        # TÍTULO
+# =======================================
+# TÍTULO
+# =======================================
         Label(caixa, text="Título:").grid(row=0, column=0, padx=5, pady=5, sticky="e")
         self.titulo = Entry(caixa, width=30)
         self.titulo.grid(row=0, column=1, padx=5, pady=5)
-
-        # DESCRIÇÃO
+        
+# =======================================
+# DESCRIÇÃO
+# =======================================
         Label(caixa, text="Descrição:").grid(row=1, column=0, padx=5, pady=5, sticky="e")
         self.descricao = Entry(caixa, width=30)
         self.descricao.grid(row=1, column=1, padx=5, pady=5)
 
-        # PRAZO (calendário suspenso)
+# =======================================
+# PRAZO
+# =======================================
         Label(caixa, text="Prazo:").grid(row=2, column=0, padx=5, pady=5, sticky="e")
         self.prazo = DateEntry(caixa, date_pattern="dd/mm/yyyy", state="readonly")
         self.prazo.grid(row=2, column=1, padx=5, pady=5, sticky="w")
 
-        # PRIORIDADE
+# =======================================
+# PRIORIDADE
+# =======================================
         Label(caixa, text="Prioridade:").grid(row=3, column=0, padx=5, pady=5, sticky="e")
         self.prioridade = Combobox(caixa, values=PRIORIDADES, state="readonly")
         self.prioridade.current(0)
         self.prioridade.grid(row=3, column=1, padx=5, pady=5, sticky="w")
 
-        # DISCIPLINA (vem da tabela disciplina)
+# =======================================
+# DISCIPLINA 
+# =======================================
         Label(caixa, text="Disciplina:").grid(row=4, column=0, padx=5, pady=5, sticky="e")
         self.mapaDisc = carregarDisciplinas()
         self.disciplina = Combobox(caixa, values=list(self.mapaDisc), state="readonly",
@@ -594,10 +637,13 @@ class Login(Frame):
             self.disciplina.current(0)
         self.disciplina.grid(row=4, column=1, padx=5, pady=5, sticky="w")
 
-        # BOTÃO SALVAR
+# =======================================
+# BOTÃO SALVAR
+# =======================================
         self.btnSalvar = Button(caixa, text="Salvar tarefa", width=20,
                                 command=self.salvarTarefa)
         self.btnSalvar.grid(row=5, column=0, columnspan=2, pady=15)
+
 
     def salvarTarefa(self):
         titulo = self.titulo.get().strip()
@@ -645,8 +691,8 @@ class Login(Frame):
         except sqlite3.Error as erro:
             showerror("Erro no banco de dados", str(erro), parent=self.janelaTarefa)
 
-    # *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
-    # JANELA LISTAR TAREFA
+# *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
+# JANELA LISTAR TAREFA
 
     def ListarTarefa(self):
         if self._jaAberta("janelaListar"):
@@ -659,7 +705,9 @@ class Login(Frame):
         self.janelaListar.columnconfigure(0, weight=1)
         self.janelaListar.rowconfigure(2, weight=1)  # a lista ocupa o espaço que sobra
 
-        # CALENDÁRIO
+# =======================================
+# CALENDÁRIO
+# =======================================
         self.calendario = Calendar(self.janelaListar, date_pattern="dd/mm/yyyy",
                                    selectmode="none")
         self.calendario.grid(row=0, column=0, padx=10, pady=10)
@@ -668,7 +716,9 @@ class Login(Frame):
         for prioridade, cor in CORES.items():
             self.calendario.tag_config(prioridade, background=cor, foreground="white")
 
-        # FILTRO POR PRIORIDADE
+# =======================================
+# FILTRO POR PRIORIDADE
+# =======================================
         filtro = Frame(self.janelaListar)
         filtro.grid(row=1, column=0, pady=5)
 
@@ -679,7 +729,9 @@ class Login(Frame):
         self.filtroPrioridade.grid(row=0, column=1, padx=5)
         self.filtroPrioridade.bind("<<ComboboxSelected>>", self.carregarTarefas)
 
-        # LISTA COM SCROLLBAR
+# =======================================
+# LISTA COM SCROLLBAR
+# =======================================
         quadroLista = Frame(self.janelaListar)
         quadroLista.grid(row=2, column=0, sticky="nsew", padx=10, pady=(0, 10))
         quadroLista.columnconfigure(0, weight=1)
@@ -754,8 +806,8 @@ class Login(Frame):
             # Data pintada no calendário
             self.calendario.calevent_create(data.date(), titulo, tags=prioridade)
 
-    # *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
-    # JANELA EDITAR TAREFA
+# *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
+# JANELA EDITAR TAREFA
 
     def EditarTarefa(self):
         if self._jaAberta("janelaEditar"):
@@ -780,7 +832,9 @@ class Login(Frame):
         for prioridade, cor in CORES.items():
             self.calendarioEd.tag_config(prioridade, background=cor, foreground="white")
 
-        # FORMULÁRIO DE EDIÇÃO (logo abaixo do calendário, para o botão ficar visível)
+# =======================================
+# FORMULÁRIO DE EDIÇÃO 
+# =======================================
         form = Frame(self.janelaEditar)
         form.grid(row=1, column=0, pady=(0, 10))
 
@@ -813,7 +867,9 @@ class Login(Frame):
                                       command=self.salvarEdicao)
         self.btnSalvarEdicao.grid(row=5, column=0, columnspan=2, pady=10)
 
-        # LISTA COM SCROLLBAR (ordenada: Alta > Média > Baixa)
+# =======================================
+# LISTA COM SCROLLBAR (ordenada: Alta > Média > Baixa)
+# =======================================
         quadroLista = Frame(self.janelaEditar)
         quadroLista.grid(row=2, column=0, sticky="nsew", padx=10, pady=(0, 10))
         quadroLista.columnconfigure(0, weight=1)
@@ -848,7 +904,10 @@ class Login(Frame):
         self.listaEd.bind("<<TreeviewSelect>>", self.selecionarTarefaEdicao)
 
         self.carregarTarefasEdicao()
-
+        
+# =======================================
+# CARREGAR TAREFAS
+# =======================================
     def carregarTarefasEdicao(self, selecionar=None):
         # Limpa a lista e o calendário antes de recarregar
         self.listaEd.delete(*self.listaEd.get_children())
@@ -889,6 +948,9 @@ class Login(Frame):
             self.listaEd.selection_set(str(selecionar))
             self.listaEd.see(str(selecionar))
 
+# =======================================
+# SELECIONAR TAREFA EDIÇÃO
+# =======================================
     def selecionarTarefaEdicao(self, evento=None):
         selecao = self.listaEd.selection()
         if not selecao:
@@ -911,7 +973,10 @@ class Login(Frame):
 
         # Leva o calendário até o mês do prazo da tarefa
         self.calendarioEd.see(data.date())
-
+        
+# =======================================
+# SALVAR EDIÇÃO
+# ======================================= 
     def salvarEdicao(self):
         try:
             if self.idEditando is None:
@@ -962,8 +1027,8 @@ class Login(Frame):
         except sqlite3.Error as erro:
             showerror("Erro no banco de dados", str(erro), parent=self.janelaEditar)
 
-    # *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
-    # JANELA MARCAR COMO CONCLUIDA
+# *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
+# JANELA MARCAR COMO CONCLUIDA
 
     def MarcarConcluida(self):
         if self._jaAberta("janelaConcluir"):
@@ -975,8 +1040,11 @@ class Login(Frame):
 
         self.janelaConcluir.columnconfigure(0, weight=1)
         self.janelaConcluir.rowconfigure(0, weight=1)  # a lista ocupa o espaço que sobra
+        
+# =======================================
+# LISTA COM SCROLLBAR 
+# =======================================
 
-        # LISTA COM SCROLLBAR (todos os atributos das tarefas)
         quadroLista = Frame(self.janelaConcluir)
         quadroLista.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
         quadroLista.columnconfigure(0, weight=1)
@@ -1032,6 +1100,9 @@ class Login(Frame):
 
         self.carregarTarefasConcluir()
 
+# =======================================
+# CARREGAR TAREFAS CONCLUIR
+# =======================================
     def carregarTarefasConcluir(self):
         self.listaConc.delete(*self.listaConc.get_children())
 
@@ -1099,7 +1170,9 @@ class Login(Frame):
         except sqlite3.Error as erro:
             showerror("Erro no banco de dados", str(erro), parent=self.janelaConcluir)
 
-
+# =======================================
+# REMOVER TAREFA
+# =======================================    
     def removerTarefa(self):
         selecao = self.listaConc.selection()
 
@@ -1153,8 +1226,8 @@ class Login(Frame):
         except sqlite3.Error as erro:
             showerror("Erro no banco de dados", str(erro), parent=self.janelaConcluir)
 
-    # *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
-    # JANELA DE RESUMO (com abas: Resumo, Criar Flash Card, Responder Flash Cards)
+# *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
+# JANELA DE RESUMO (com abas: Resumo, Criar Flash Card, Responder Flash Cards)
 
     def Resumo(self):
         if self._jaAberta("janelaResumo"):
@@ -1162,7 +1235,11 @@ class Login(Frame):
 
         self.janelaResumo = Toplevel(self)
         self.janelaResumo.title("RESUMO E FLASH CARDS")
-        self.janelaResumo.geometry("780x640")
+        # A altura se adapta à tela (descontando a barra de tarefas), para os botões
+        # nunca ficarem fora da área visível. A janela abre perto do topo.
+        altura = min(700, self.janelaResumo.winfo_screenheight() - 120)
+        self.janelaResumo.geometry(f"780x{altura}+80+10")
+        self.janelaResumo.minsize(700, 450)
 
         self.janelaResumo.columnconfigure(0, weight=1)
         self.janelaResumo.rowconfigure(0, weight=1)
@@ -1184,10 +1261,12 @@ class Login(Frame):
         self._montarAbaResumo()
         self._montarAbaCriarFlash()
         self._montarAbaResponder()
+        
 
-    # =====================
-    # ABA 1: RESUMO
-    # =====================
+# =======================================
+# ABA 1: RESUMO
+# =======================================
+    
     def _montarAbaResumo(self):
         aba = self.abaResumo
         aba.columnconfigure(1, weight=1)
@@ -1213,7 +1292,7 @@ class Login(Frame):
         quadroTexto.columnconfigure(0, weight=1)
         quadroTexto.rowconfigure(0, weight=1)
 
-        self.resConteudo = Text(quadroTexto, wrap="word", height=15)
+        self.resConteudo = Text(quadroTexto, wrap="word", height=8)
         self.resConteudo.grid(row=0, column=0, sticky="nsew")
 
         barra = Scrollbar(quadroTexto, orient="vertical", command=self.resConteudo.yview)
@@ -1231,6 +1310,9 @@ class Login(Frame):
         Button(botoes, text="Limpar", width=12,
                command=self.limparResumo).grid(row=0, column=2, padx=5)
 
+# =======================================
+# LER RESUMO
+# =======================================    
     def _lerResumo(self):
         """Lê e valida os campos do resumo. Devolve (título, disciplina, conteúdo)."""
         titulo = self.resTitulo.get().strip()
@@ -1247,7 +1329,10 @@ class Login(Frame):
             raise ValueError("Escreva o conteúdo do resumo.")
 
         return titulo, disciplina, conteudo
-
+    
+# =======================================
+# SALVAR RESUMO
+# =======================================
     def salvarResumo(self):
         try:
             titulo, disciplina, conteudo = self._lerResumo()
@@ -1278,7 +1363,10 @@ class Login(Frame):
                      "Use \"Salvar em .txt\" para exportar ou \"Limpar\" para começar outro.",
                      parent=self.janelaResumo)
 
-            # O novo resumo passa a aparecer na aba "Criar Flash Card"
+            # O novo resumo passa a aparecer na aba "Criar Flash Card".
+            # A disciplina dessa aba é ajustada para a do resumo que acabou de ser
+            # salvo, senão a lista de resumos ficaria filtrada por outra disciplina.
+            self.flDisciplina.set(disciplina)
             self.atualizarResumosFlash()
 
         except ValueError as erro:
@@ -1286,6 +1374,9 @@ class Login(Frame):
         except sqlite3.Error as erro:
             showerror("Erro no banco de dados", str(erro), parent=self.janelaResumo)
 
+# =======================================
+# SALVAR RESUMO EM TXT
+# =======================================
     def salvarResumoTxt(self):
         try:
             titulo, disciplina, conteudo = self._lerResumo()
@@ -1320,13 +1411,17 @@ class Login(Frame):
         except OSError as erro:
             showerror("Erro ao salvar o arquivo", str(erro), parent=self.janelaResumo)
 
+# =======================================
+# LIMPAR RESUMO
+# =======================================
+
     def limparResumo(self):
         self.resTitulo.delete(0, END)
         self.resConteudo.delete("1.0", END)
 
-    # =====================
-    # ABA 2: CRIAR FLASH CARD
-    # =====================
+# =======================================
+# ABA 2: CRIAR FLASH CARD
+# =======================================
     def _montarAbaCriarFlash(self):
         aba = self.abaCriarFlash
         aba.columnconfigure(0, weight=1)
@@ -1342,8 +1437,10 @@ class Login(Frame):
         Label(caixa, text="Criar Flash Card (verdadeiro ou falso)", font=fonte,
               fg="blue", bg="lightgray").grid(row=0, column=0, columnspan=2,
                                                padx=5, pady=(0, 15))
-
-        # DISCIPLINA
+        
+# =======================================
+# DISCIPLINA
+# =======================================
         Label(caixa, text="Disciplina:").grid(row=1, column=0, padx=5, pady=5, sticky="e")
         self.flDisciplina = Combobox(caixa, values=list(self.mapaDiscRes),
                                      state="readonly", width=40)
@@ -1352,17 +1449,23 @@ class Login(Frame):
         self.flDisciplina.grid(row=1, column=1, padx=5, pady=5, sticky="w")
         self.flDisciplina.bind("<<ComboboxSelected>>", self.atualizarResumosFlash)
 
-        # RESUMO (o flash card pertence a um resumo seu, como no banco de dados)
+# =======================================
+# RESUMO (o flash card pertence a um resumo seu)
+# =======================================
         Label(caixa, text="Resumo:").grid(row=2, column=0, padx=5, pady=5, sticky="e")
         self.flResumo = Combobox(caixa, values=[], state="readonly", width=40)
         self.flResumo.grid(row=2, column=1, padx=5, pady=5, sticky="w")
 
-        # PERGUNTA
+# =======================================
+# PERGUNTA
+# =======================================
         Label(caixa, text="Pergunta:").grid(row=3, column=0, padx=5, pady=5, sticky="e")
         self.flPergunta = Entry(caixa, width=43)
         self.flPergunta.grid(row=3, column=1, padx=5, pady=5, sticky="w")
 
-        # RESPOSTA CORRETA (verdadeiro ou falso)
+# =======================================
+# RESPOSTA CORRETA (verdadeiro ou falso)
+# =======================================
         Label(caixa, text="Resposta correta:").grid(row=4, column=0, padx=5, pady=5, sticky="e")
         quadroResposta = Frame(caixa)
         quadroResposta.grid(row=4, column=1, padx=5, pady=5, sticky="w")
@@ -1371,13 +1474,25 @@ class Login(Frame):
                     value="Verdadeiro").grid(row=0, column=0, padx=(0, 15))
         Radiobutton(quadroResposta, text="Falso", variable=self.flResposta,
                     value="Falso").grid(row=0, column=1)
+        
+# =======================================
+# BOTÕES CRIAR FLASH CARD E REMOVER RESUMO
+# =======================================
+        botoesFlash = Frame(caixa)
+        botoesFlash.grid(row=5, column=0, columnspan=2, pady=20)
 
-        # BOTÃO CRIAR
-        Button(caixa, text="Criar Flash Card", width=20,
-               command=self.criarFlashCard).grid(row=5, column=0, columnspan=2, pady=20)
+        Button(botoesFlash, text="Criar Flash Card", width=20,
+               command=self.criarFlashCard).grid(row=0, column=0, padx=5)
+
+        # Remove o resumo escolhido no campo "Resumo" (e os flash cards dele)
+        Button(botoesFlash, text="Remover resumo", width=20,
+               command=self.removerResumo).grid(row=0, column=1, padx=5)
 
         self.atualizarResumosFlash()
-
+        
+# =======================================
+# ATUALIZAR RESUMO FLASH
+# =======================================
     def atualizarResumosFlash(self, evento=None):
         """Preenche o campo Resumo com os resumos do aluno na disciplina escolhida."""
         disciplina = self.flDisciplina.get()
@@ -1406,7 +1521,10 @@ class Login(Frame):
             self.flResumo.current(0)
         else:
             self.flResumo.set("")
-
+            
+# =======================================
+# CRIAR FLASH CARD
+# =======================================
     def criarFlashCard(self):
         pergunta = self.flPergunta.get().strip()
         resposta = self.flResposta.get()
@@ -1452,13 +1570,72 @@ class Login(Frame):
         except sqlite3.Error as erro:
             showerror("Erro no banco de dados", str(erro), parent=self.janelaResumo)
 
-    # =====================
-    # ABA 3: RESPONDER FLASH CARDS (de todos os usuários)
-    # =====================
+# =======================================
+# REMOVER RESUMO
+# =======================================
+    def removerResumo(self):
+        resumo = self.flResumo.get()
+
+        try:
+            if resumo not in self.mapaResumosFl:
+                raise ValueError("Selecione um resumo para remover.")
+
+            idResumo = self.mapaResumosFl[resumo]
+
+            # Conta os flash cards do resumo, para avisar antes de apagar
+            conexao = conectar()
+            try:
+                qtdFlash = conexao.execute(
+                    "SELECT COUNT(*) FROM flashcard WHERE id_resumo = ?",
+                    (idResumo,)
+                ).fetchone()[0]
+            finally:
+                conexao.close()
+
+            aviso = f'Deseja realmente remover o resumo "{resumo}"?'
+            if qtdFlash > 0:
+                aviso += (f"\n\nOs {qtdFlash} flash card(s) criados a partir dele "
+                          f"também serão removidos.")
+
+            if not askyesno("Remover resumo", aviso, parent=self.janelaResumo):
+                return
+
+            conexao = conectar()
+            try:
+                # id_aluno no WHERE garante que só resumos do próprio usuário são removidos.
+                # Os flash cards do resumo saem junto (ON DELETE CASCADE no banco).
+                cursor = conexao.execute(
+                    "DELETE FROM resumo WHERE id_resumo = ? AND id_aluno = ?",
+                    (idResumo, self.idAluno)
+                )
+                conexao.commit()
+                removidos = cursor.rowcount
+            finally:
+                conexao.close()
+
+            if removidos == 0:
+                raise ValueError("Resumo não encontrado.")
+
+            showinfo("Resumo", "Resumo removido com sucesso!",
+                     parent=self.janelaResumo)
+
+            # Atualiza o campo Resumo desta aba e a lista da aba "Responder Flash Cards"
+            self.atualizarResumosFlash()
+            self.carregarFlashCards()
+
+        except ValueError as erro:
+            showerror("Atenção", str(erro), parent=self.janelaResumo)
+        except sqlite3.Error as erro:
+            showerror("Erro no banco de dados", str(erro), parent=self.janelaResumo)
+
+# =======================================
+# ABA 3: RESPONDER FLASH CARDS (de todos os usuários)
+# =======================================
     def _montarAbaResponder(self):
         aba = self.abaResponder
         aba.columnconfigure(0, weight=1)
         aba.rowconfigure(1, weight=1)   # a lista ocupa o espaço que sobra
+        aba.rowconfigure(2, weight=2)   # a área do conteúdo do resumo recebe mais espaço
 
         # Dono de cada flash card listado: {id_flashcard: id_aluno}
         self.donosFlash = {}
@@ -1484,7 +1661,8 @@ class Login(Frame):
             quadroLista,
             columns=("disciplina", "pergunta", "autor"),
             show="headings",
-            selectmode="browse"
+            selectmode="browse",
+            height=4
         )
         self.listaFlash.heading("disciplina", text="Disciplina")
         self.listaFlash.heading("pergunta", text="Pergunta")
@@ -1500,9 +1678,27 @@ class Login(Frame):
 
         self.listaFlash.bind("<<TreeviewSelect>>", self.aoSelecionarFlash)
 
+        # CONTEÚDO DO RESUMO (somente leitura): mostra o resumo ao qual o flash card pertence
+        quadroConteudo = Frame(aba)
+        quadroConteudo.grid(row=2, column=0, sticky="nsew", padx=5, pady=5)
+        quadroConteudo.columnconfigure(0, weight=1)
+        quadroConteudo.rowconfigure(1, weight=1)
+
+        self.lblTituloResumoFlash = Label(quadroConteudo, text="Conteúdo do resumo:",
+                                          font=("Verdana", 10, "bold"), anchor="w")
+        self.lblTituloResumoFlash.grid(row=0, column=0, columnspan=2, sticky="ew")
+
+        self.txtConteudoFlash = Text(quadroConteudo, wrap="word", height=6, state="disabled")
+        self.txtConteudoFlash.grid(row=1, column=0, sticky="nsew")
+
+        barraConteudo = Scrollbar(quadroConteudo, orient="vertical",
+                                  command=self.txtConteudoFlash.yview)
+        barraConteudo.grid(row=1, column=1, sticky="ns")
+        self.txtConteudoFlash.configure(yscrollcommand=barraConteudo.set)
+
         # PAINEL: pergunta completa + botões de resposta
         painel = Frame(aba)
-        painel.grid(row=2, column=0, pady=10)
+        painel.grid(row=3, column=0, pady=10)
 
         self.lblPerguntaFlash = Label(painel, text="Selecione um flash card na lista.",
                                       wraplength=650, justify="center",
@@ -1524,7 +1720,10 @@ class Login(Frame):
         self.btnRemoverFlash.grid_remove()
 
         self.carregarFlashCards()
-
+        
+# =======================================
+# CARREGAR FLASH CARDS
+# =======================================
     def carregarFlashCards(self, evento=None):
         escolhida = self.filtroFlash.get()
 
@@ -1565,16 +1764,51 @@ class Login(Frame):
 
         self.aoSelecionarFlash()
 
+# =======================================
+# MOSTRAR CONTEÚDO DO RESUMO (somente leitura)
+# =======================================
+    def _mostrarConteudoFlash(self, titulo, conteudo):
+        """Escreve o título e o conteúdo do resumo na área de texto da aba Responder."""
+        self.lblTituloResumoFlash["text"] = titulo
+        self.txtConteudoFlash.config(state="normal")   # precisa estar liberado para escrever
+        self.txtConteudoFlash.delete("1.0", END)
+        self.txtConteudoFlash.insert("1.0", conteudo)
+        self.txtConteudoFlash.config(state="disabled") # volta a ser somente leitura
+        
+# =======================================
+# SELECIONAR FLASH CARD
+# =======================================
     def aoSelecionarFlash(self, evento=None):
         selecao = self.listaFlash.selection()
 
         if not selecao:
             self.lblPerguntaFlash["text"] = "Selecione um flash card na lista."
+            self._mostrarConteudoFlash("Conteúdo do resumo:", "")
             self.btnRemoverFlash.grid_remove()
             return
 
         iid = selecao[0]
         self.lblPerguntaFlash["text"] = self.listaFlash.set(iid, "pergunta")
+
+        # Busca o resumo ao qual o flash card pertence (a resposta correta NÃO é buscada aqui)
+        conexao = conectar()
+        try:
+            linha = conexao.execute(
+                "SELECT r.titulo_resumo, r.conteudo "
+                "FROM flashcard f JOIN resumo r ON r.id_resumo = f.id_resumo "
+                "WHERE f.id_flashcard = ?",
+                (int(iid),)
+            ).fetchone()
+        except sqlite3.Error as erro:
+            showerror("Erro no banco de dados", str(erro), parent=self.janelaResumo)
+            linha = None
+        finally:
+            conexao.close()
+
+        if linha is not None:
+            self._mostrarConteudoFlash(f"Resumo: {linha[0]}", linha[1])
+        else:
+            self._mostrarConteudoFlash("Conteúdo do resumo:", "")
 
         # O botão de remover só aparece para o criador do flash card
         if self.donosFlash.get(iid) == self.idAluno:
@@ -1616,7 +1850,10 @@ class Login(Frame):
             showerror("Atenção", str(erro), parent=self.janelaResumo)
         except sqlite3.Error as erro:
             showerror("Erro no banco de dados", str(erro), parent=self.janelaResumo)
-
+            
+# =======================================
+# REMOVER FLASH CARD
+# =======================================
     def removerFlash(self):
         selecao = self.listaFlash.selection()
 
@@ -1659,7 +1896,249 @@ class Login(Frame):
             showerror("Erro no banco de dados", str(erro), parent=self.janelaResumo)
 
 
-# *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
+# *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
+# JANELA DE RELATÓRIO
+
+    def gerarRelatorio(self):
+        # Se já estiver aberta, fecha e gera de novo (assim os dados ficam atualizados)
+        antiga = getattr(self, "janelaRelatorio", None)
+        if antiga is not None and antiga.winfo_exists():
+            antiga.destroy()
+
+        try:
+            relatorio = self._montarRelatorio()
+        except sqlite3.Error as erro:
+            showerror("Erro no banco de dados", str(erro), parent=self.janelaMenu)
+            return
+
+        self.janelaRelatorio = Toplevel(self)
+        self.janelaRelatorio.title("RELATÓRIO DE PRODUTIVIDADE")
+        self.janelaRelatorio.geometry("720x560")
+
+        # O botão é empacotado primeiro (embaixo) para nunca ficar fora da janela
+        Button(
+            self.janelaRelatorio,
+            text="Salvar relatório em TXT",
+            width=25,
+            command=lambda: self.salvarRelatorio(relatorio)
+        ).pack(side=BOTTOM, pady=10)
+
+        quadroTexto = Frame(self.janelaRelatorio)
+        quadroTexto.pack(
+            padx=10,
+            pady=5,
+            fill=BOTH,
+            expand=True
+        )
+
+        # Fonte de largura fixa, para as colunas das tabelas ficarem alinhadas
+        self.txtRelatorio = Text(
+            quadroTexto,
+            height=18,
+            wrap=WORD,
+            font=("Courier New", 10)
+        )
+
+        barra = Scrollbar(quadroTexto, orient="vertical", command=self.txtRelatorio.yview)
+        self.txtRelatorio.configure(yscrollcommand=barra.set)
+
+        barra.pack(side=RIGHT, fill=Y)
+        self.txtRelatorio.pack(side=LEFT, fill=BOTH, expand=True)
+
+        self.txtRelatorio.insert(END, relatorio)
+        self.txtRelatorio.config(state=DISABLED)
+        
+# =======================================
+# MONTAR RELATÓRIO
+# =======================================
+    def _montarRelatorio(self):
+        """Monta o texto do relatório de produtividade do aluno logado."""
+        hoje = datetime.now()
+        hoje_iso = hoje.strftime("%Y-%m-%d")
+
+        conexao = conectar()
+        try:
+            usuario, matricula = conexao.execute(
+                "SELECT usuario, matricula FROM aluno WHERE id_aluno = ?",
+                (self.idAluno,)
+            ).fetchone()
+
+            total, concluidas = conexao.execute(
+                "SELECT COUNT(*), COALESCE(SUM(status), 0) FROM tarefa WHERE id_aluno = ?",
+                (self.idAluno,)
+            ).fetchone()
+
+            por_prioridade = {
+                prioridade: (qtd, conc)
+                for prioridade, qtd, conc in conexao.execute(
+                    "SELECT prioridade, COUNT(*), COALESCE(SUM(status), 0) "
+                    "FROM tarefa WHERE id_aluno = ? GROUP BY prioridade",
+                    (self.idAluno,)
+                )
+            }
+
+            por_disciplina = conexao.execute(
+                "SELECT d.descricao, COUNT(*), COALESCE(SUM(t.status), 0) "
+                "FROM tarefa t JOIN disciplina d ON d.id_disciplina = t.id_disciplina "
+                "WHERE t.id_aluno = ? "
+                "GROUP BY d.id_disciplina, d.descricao "
+                "ORDER BY COUNT(*) DESC, d.descricao",
+                (self.idAluno,)
+            ).fetchall()
+
+            atrasadas = conexao.execute(
+                "SELECT t.titulo_tarefa, t.prazo, t.prioridade, d.descricao "
+                "FROM tarefa t JOIN disciplina d ON d.id_disciplina = t.id_disciplina "
+                "WHERE t.id_aluno = ? AND t.status = 0 AND t.prazo < ? "
+                "ORDER BY t.prazo",
+                (self.idAluno, hoje_iso)
+            ).fetchall()
+
+            proximas = conexao.execute(
+                "SELECT t.titulo_tarefa, t.prazo, t.prioridade, d.descricao "
+                "FROM tarefa t JOIN disciplina d ON d.id_disciplina = t.id_disciplina "
+                "WHERE t.id_aluno = ? AND t.status = 0 AND t.prazo >= ? "
+                "ORDER BY t.prazo LIMIT 5",
+                (self.idAluno, hoje_iso)
+            ).fetchall()
+
+            total_resumos = conexao.execute(
+                "SELECT COUNT(*) FROM resumo WHERE id_aluno = ?",
+                (self.idAluno,)
+            ).fetchone()[0]
+
+            total_flash = conexao.execute(
+                "SELECT COUNT(*) FROM flashcard f "
+                "JOIN resumo r ON r.id_resumo = f.id_resumo "
+                "WHERE r.id_aluno = ?",
+                (self.idAluno,)
+            ).fetchone()[0]
+        finally:
+            conexao.close()
+# *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
+#
+        def data_br(texto_iso):
+            return datetime.strptime(texto_iso, "%Y-%m-%d").strftime("%d/%m/%Y")
+
+        pendentes = total - concluidas
+        percentual = f"{100 * concluidas / total:.1f}".replace(".", ",") if total else "0,0"
+
+        grossa = "=" * 66
+        fina = "-" * 66
+        linhas = [
+            "RELATÓRIO DE PRODUTIVIDADE",
+            grossa,
+            f"Aluno     : {usuario}",
+            f"Matrícula : {matricula}",
+            f"Gerado em : {hoje:%d/%m/%Y %H:%M}",
+            grossa,
+            "",
+            "RESUMO GERAL",
+            fina,
+            f"  Total de tarefas    : {total}",
+            f"  Concluídas          : {concluidas}",
+            f"  Pendentes           : {pendentes}",
+            f"  Percentual concluído: {percentual}%",
+            "",
+            "POR PRIORIDADE",
+            fina,
+            f"  {'Prioridade':<14}{'Total':>7}{'Concluídas':>13}{'Pendentes':>12}",
+        ]
+
+        # Da mais urgente para a menos urgente: Alta, Média, Baixa
+        for prioridade in reversed(PRIORIDADES):
+            qtd, conc = por_prioridade.get(prioridade, (0, 0))
+            linhas.append(f"  {prioridade:<14}{qtd:>7}{conc:>13}{qtd - conc:>12}")
+
+        linhas += [
+            "",
+            "POR DISCIPLINA",
+            fina,
+            f"  {'Disciplina':<40}{'Total':>7}{'Concl.':>8}{'Pend.':>8}",
+        ]
+
+        if por_disciplina:
+            for disciplina, qtd, conc in por_disciplina:
+                linhas.append(f"  {disciplina:<40}{qtd:>7}{conc:>8}{qtd - conc:>8}")
+        else:
+            linhas.append("  (nenhuma tarefa cadastrada)")
+
+        linhas += ["", "TAREFAS ATRASADAS (pendentes com prazo vencido)", fina]
+
+        if atrasadas:
+            for titulo, prazo, prioridade, disciplina in atrasadas:
+                dias = (hoje.date() - datetime.strptime(prazo, "%Y-%m-%d").date()).days
+                linhas.append(f"  - {titulo} ({disciplina})")
+                linhas.append(
+                    f"      Prazo: {data_br(prazo)} | Prioridade: {prioridade} | "
+                    f"{dias} dia(s) de atraso"
+                )
+        else:
+            linhas.append("  (nenhuma)")
+
+        linhas += ["", "PRÓXIMAS TAREFAS PENDENTES (até 5)", fina]
+
+        if proximas:
+            for titulo, prazo, prioridade, disciplina in proximas:
+                linhas.append(
+                    f"  - {data_br(prazo)}  {titulo} ({disciplina}) - {prioridade}"
+                )
+        else:
+            linhas.append("  (nenhuma)")
+
+        linhas += [
+            "",
+            "RESUMOS E FLASH CARDS",
+            fina,
+            f"  Resumos salvos      : {total_resumos}",
+            f"  Flash cards criados : {total_flash}",
+            "",
+        ]
+
+        return "\n".join(linhas)
+
+# =======================================
+# SALVAR O RELATÓRIO EM TXT
+# =======================================
+    def salvarRelatorio(self, relatorio):
+        # Deixa o usuário escolher a pasta e o nome do arquivo
+        caminho = filedialog.asksaveasfilename(
+            parent=self.janelaRelatorio,
+            title="Salvar relatório em arquivo de texto",
+            defaultextension=".txt",
+            initialfile="relatorio_produtividade",
+            filetypes=[("Arquivo de texto", "*.txt")]
+        )
+        if not caminho:   # o usuário cancelou
+            return
+
+        try:
+            with open(
+                caminho,
+                "w",
+                encoding="utf-8"
+            ) as arquivo:
+
+                arquivo.write(relatorio)
+
+            showinfo(
+                "Relatório",
+                "Relatório salvo com sucesso!\n"
+                f"Arquivo: {caminho}",
+                parent=self.janelaRelatorio
+            )
+
+        except OSError as erro:
+
+            showerror(
+                "Erro ao salvar",
+                "Não foi possível salvar o relatório:\n"
+                + str(erro),
+                parent=self.janelaRelatorio
+            )
+
+
+# *=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
 
 
 def main():
